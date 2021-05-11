@@ -172,7 +172,7 @@ void uvmunmap(pagetable_t, uint64, uint64, int);
 void uvmclear(pagetable_t, uint64);
 uint64 walkaddr(pagetable_t, uint64);
 int copyout(pagetable_t, uint64, char *, uint64);
-int copyin(pagetable_t, char *, uint64, uint64);
+int copyin(pagetable_t p, char *, uint64, uint64);
 int copyinstr(pagetable_t, char *, uint64, uint64);
 void free_kmapping(struct proc *);
 void freewalk(pagetable_t);
@@ -185,6 +185,7 @@ void plicinit(void);
 void plicinithart(void);
 int plic_claim(void);
 void plic_complete(int);
+int copyinstr_new(char *dst, uint64 srcva, uint64 max);
 
 // virtio_disk.c
 void virtio_disk_init(void);

@@ -39,8 +39,6 @@ exec(char *path, char **argv)
 
   if((pagetable = proc_pagetable(p)) == 0)
     goto bad;
-  // if (p->pid != 1)
-  //   uvmunmap(p->k_pagetable, 0,1,1);
 
   // Load program into memory.
   for(i=0, off=elf.phoff; i<elf.phnum; i++, off+=sizeof(ph)){

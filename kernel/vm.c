@@ -261,7 +261,7 @@ int uvmapping(pagetable_t pagetable,pagetable_t dst,u64 ori,u64 end){
     if (d_pte == 0){
       panic("can't allocate an pte");
     }
-    *d_pte = *pte;
+    *d_pte = *pte & (~PTE_U);
   }
   return 0;
 }
@@ -414,20 +414,32 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 // Copy from user to kernel.
 // Copy len bytes to dst from virtual address srcva in a given page table.
 // Return 0 on success, -1 on error.
+
 int
-copyin(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
-{
+copyin_new(char *dst, uint64 srcva, uint64 len){
   uint64 n, va0, pa0;
+  if (srcva > PLIC){
+    panic("invalid user pointer");
+  }
+  // pte_t *pte1 = walk(myproc()->pagetable,srcva,0);
+  // if (pte1 == 0){
+  //   panic("invalid srcva");
+  // }
+  // pte_t *pte2 = walk(myproc()->k_pagetable,srcva,0);
+  // if (pte2 == 0){
+  //   panic("invalid srcva");
+  // }
+
+  // if (*pte1 != *pte2){
+  //   printf("pte1 = %p , pte2 = %p\n",PTE2PA(*pte1),PTE2PA(*pte2));
+  // }
 
   while(len > 0){
     va0 = PGROUNDDOWN(srcva);
-    pa0 = walkaddr(pagetable, va0);
-    if(pa0 == 0)
-      return -1;
     n = PGSIZE - (srcva - va0);
     if(n > len)
       n = len;
-    memmove(dst, (void *)(pa0 + (srcva - va0)), n);
+    memmove(dst, (void *)srcva, n);
 
     len -= n;
     dst += n;
@@ -436,26 +448,33 @@ copyin(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
   return 0;
 }
 
+int
+copyin(pagetable_t p, char *dst, uint64 srcva, uint64 len)
+{
+  return copyin_new(dst,srcva,len);
+}
+
 // Copy a null-terminated string from user to kernel.
 // Copy bytes to dst from virtual address srcva in a given page table,
 // until a '\0', or max.
 // Return 0 on success, -1 on error.
 int
-copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
+copyinstr_new(char *dst, uint64 srcva, uint64 max)
 {
   uint64 n, va0, pa0;
   int got_null = 0;
 
+  pa0 = srcva;
   while(got_null == 0 && max > 0){
     va0 = PGROUNDDOWN(srcva);
-    pa0 = walkaddr(pagetable, va0);
+    // pa0 = walkaddr(pagetable, va0);
     if(pa0 == 0)
       return -1;
     n = PGSIZE - (srcva - va0);
     if(n > max)
       n = max;
 
-    char *p = (char *) (pa0 + (srcva - va0));
+    char *p = (char*)pa0;
     while(n > 0){
       if(*p == '\0'){
         *dst = '\0';
@@ -469,7 +488,7 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
       p++;
       dst++;
     }
-
+    pa0 += n;
     srcva = va0 + PGSIZE;
   }
   if(got_null){
@@ -478,6 +497,13 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
     return -1;
   }
 }
+
+int
+copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max){
+  return copyinstr_new(dst,srcva,max);
+
+}
+
 
 void vm_p_helper(pagetable_t pgt,int level){
   if (level < 0 )
