@@ -3619,12 +3619,12 @@ badarg(char *s)
     exit(xstatus);
     22be:	00003097          	auipc	ra,0x3
     22c2:	3e2080e7          	jalr	994(ra) # 56a0 <exit>
+  return (x & SSTATUS_SIE) != 0;
+}
 
-static inline uint64
-r_sp()
-{
+static inline uint64 r_sp() {
   uint64 x;
-  asm volatile("mv %0, sp" : "=r" (x) );
+  asm volatile("mv %0, sp" : "=r"(x));
     22c6:	870a                	mv	a4,sp
     printf("%s: stacktest: read below stack %p\n", s, *sp);
     22c8:	77fd                	lui	a5,0xfffff
