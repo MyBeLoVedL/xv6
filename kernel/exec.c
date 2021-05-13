@@ -74,11 +74,11 @@ int exec(char *path, char **argv) {
   // Use the second as the user stack.
   sz = PGROUNDUP(sz);
   uint64 sz1;
-  if ((sz1 = uvmalloc(pagetable, sz, sz + 2 * PGSIZE)) == 0)
+  if ((sz1 = uvmalloc(pagetable, sz, sz + (1 << 6) * PGSIZE)) == 0)
     goto bad;
-  uvmapping(pagetable, p->k_pagetable, sz, sz + 2 * PGSIZE);
+  uvmapping(pagetable, p->k_pagetable, sz, sz + (1 << 6) * PGSIZE);
   sz = sz1;
-  uvmclear(pagetable, sz - 2 * PGSIZE);
+  uvmclear(pagetable, sz - (1 << 6) * PGSIZE);
   sp = sz;
   stackbase = sp - PGSIZE;
 
@@ -120,6 +120,9 @@ int exec(char *path, char **argv) {
   p->pagetable = pagetable;
 
   p->sz = sz;
+
+  // * when first time be scheduled,starting execution from epc,
+  // * which is exactly the entry point of this process.
   p->trapframe->epc = elf.entry; // initial program counter = main
   p->trapframe->sp = sp;         // initial stack pointer
   proc_freepagetable(oldpagetable, oldsz);

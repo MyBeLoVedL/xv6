@@ -90,6 +90,7 @@ int cpuid(void);
 void exit(int);
 int fork(void);
 int growproc(int);
+u64 alarm(i32 tick, void *handler);
 i32 trace(i32 traced);
 void proc_mapstacks(pagetable_t);
 pagetable_t proc_pagetable(struct proc *);

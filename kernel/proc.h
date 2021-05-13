@@ -1,6 +1,7 @@
 #include "param.h"
-#include "types.h"
+#include "riscv.h"
 #include "spinlock.h"
+#include "types.h"
 // Saved registers for kernel context switches.
 struct context {
   uint64 ra;
@@ -98,16 +99,20 @@ struct proc {
 
   // proc_tree_lock must be held when using this:
   struct proc *parent; // Parent process
-  i32 traced; // whether current process is being traced
+  i32 traced;          // whether current process is being traced
 
   // these are private to the process, so p->lock need not be held.
   uint64 kstack;               // Virtual address of kernel stack
   uint64 sz;                   // Size of process memory (bytes)
   pagetable_t pagetable;       // User page table
-  pagetable_t k_pagetable;     // per-process kernel pagetable 
+  pagetable_t k_pagetable;     // per-process kernel pagetable
   struct trapframe *trapframe; // data page for trampoline.S
   struct context context;      // swtch() here to run process
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
-  char name[16];               // Process name (debugging)
+  u8 if_alarm;
+  u32 tick;
+  u32 tick_left;
+  void *handler;
+  char name[16]; // Process name (debugging)
 };

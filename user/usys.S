@@ -110,3 +110,13 @@ trace:
  li a7, SYS_trace
  ecall
  ret
+.global alarm
+alarm:
+ li a7, SYS_alarm
+ ecall
+ ret
+.global alarmret
+alarmret:
+ li a7, SYS_alarmret
+ ecall
+ ret
