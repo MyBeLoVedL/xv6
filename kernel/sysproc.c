@@ -55,31 +55,14 @@ u64 sys_alarm(void) {
   return alarm(tick, (void *)handler);
 }
 
+extern struct trapframe handler_frame;
+extern u8 re_en;
 u64 sys_alarmret(void) {
   struct proc *p = myproc();
   // * restore argument registers
-  asm volatile("csrrw a0, sscratch, a0");
-  asm volatile("ld t0, 112(a0)");
-  asm volatile("csrw sscratch, t0");
-
-  asm volatile("ld a1,120(a0)");
-  asm volatile("ld a2,128(a0)");
-  asm volatile("ld a3,136(a0)");
-  asm volatile("ld a4,144(a0)");
-  asm volatile("ld a5,152(a0)");
-  asm volatile("ld a6,160(a0)");
-  asm volatile("ld a7,168(a0)");
-
-  asm volatile("ld t0, 72(a0)");
-  asm volatile("ld t1, 80(a0)");
-  asm volatile("ld t2, 88(a0)");
-  asm volatile("ld t3, 256(a0)");
-  asm volatile("ld t4, 264(a0)");
-  asm volatile("ld t5, 272(a0)");
-  asm volatile("ld t6, 280(a0)");
-
-  asm volatile("csrrw a0, sscratch, a0");
-
+  memmove(p->trapframe, &handler_frame, sizeof(handler_frame));
+  re_en = 0;
+  usertrapret();
   return 0;
 }
 

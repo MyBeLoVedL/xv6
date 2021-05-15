@@ -98,6 +98,7 @@ void proc_freepagetable(pagetable_t, uint64);
 int kill(int);
 struct cpu *mycpu(void);
 struct cpu *getmycpu(void);
+void info_reg();
 struct proc *myproc();
 void procinit(void);
 void scheduler(void) __attribute__((noreturn));

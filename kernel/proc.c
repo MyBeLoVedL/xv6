@@ -281,7 +281,7 @@ i32 trace(i32 traced) {
 
 u64 alarm(i32 tick, void *handler) {
   struct proc *p = myproc();
-  p->if_alarm = 1;
+  p->if_alarm = (tick != 0);
   p->tick = tick;
   p->tick_left = tick;
   p->handler = handler;

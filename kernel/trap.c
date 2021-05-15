@@ -11,6 +11,9 @@ uint ticks;
 
 extern char trampoline[], uservec[], userret[];
 
+struct trapframe handler_frame;
+u8 re_en = 0;
+
 // in kernelvec.S, calls kerneltrap().
 void kernelvec();
 
@@ -25,6 +28,19 @@ void trapinithart(void) { w_stvec((uint64)kernelvec); }
 // handle an interrupt, exception, or system call from user space.
 // called from trampoline.S
 //
+
+void info_reg() {
+  uint64 x;
+  asm volatile("mv %0, ra" : "=r"(x));
+  printf("ra:%p\n", x);
+  asm volatile("mv %0, sp" : "=r"(x));
+  printf("sp:%p\n", x);
+  asm volatile("mv %0, gp" : "=r"(x));
+  printf("gp:%p\n", x);
+  asm volatile("mv %0, tp" : "=r"(x));
+  printf("tp:%p\n", x);
+}
+
 void usertrap(void) {
   int which_dev = 0;
 
@@ -73,13 +89,17 @@ void usertrap(void) {
   if (which_dev == 2) {
     if (p->if_alarm) {
       p->tick_left -= 1;
-      if (p->tick_left == 0) {
-        p->if_alarm = 0;
+      if (p->tick_left == 0 && !re_en) {
+        memmove(&handler_frame, p->trapframe, sizeof(handler_frame));
+        p->tick_left = p->tick;
         void *fn = p->handler;
         u64 epc = p->trapframe->epc;
         // p->context.ra = epc;
         p->trapframe->epc = (u64)fn;
         p->trapframe->ra = epc;
+        re_en = 1;
+        // printf("before: ");
+        // info_reg();
         usertrapret();
       }
     }

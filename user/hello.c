@@ -3,13 +3,13 @@ void sayyou();
 
 void sayhi() {
   printf("hi~\n");
-  alarm(10, sayyou);
+  // alarm(10, sayyou);
   alarmret();
 }
 
 void sayyou() {
   printf("you~\n");
-  alarm(10, sayhi);
+  // alarm(10, sayhi);
   alarmret();
 }
 
