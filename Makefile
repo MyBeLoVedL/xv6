@@ -137,7 +137,8 @@ UPROGS=\
 	$U/_find\
 	$U/_trace\
 	$U/_hello\
-	$U/_alarmtest\
+	$U/_lazytests\
+
 
 
 fs.img: mkfs/mkfs README $(UPROGS)

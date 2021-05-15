@@ -165,6 +165,7 @@ int uartgetc(void);
 
 pagetable_t kvmmake(void);
 void kvminit(void);
+int do_lazy_allocation(u64 addr);
 void kvminithart(void);
 void kvmmap(pagetable_t, uint64, uint64, uint64, int);
 int mappages(pagetable_t, uint64, uint64, uint64, int);

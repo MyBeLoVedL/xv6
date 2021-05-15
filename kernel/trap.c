@@ -41,6 +41,13 @@ void info_reg() {
   printf("tp:%p\n", x);
 }
 
+static inline void trap_panic() {
+  printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(),
+         myproc()->pid);
+  printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
+  myproc()->killed = 1;
+}
+
 void usertrap(void) {
   int which_dev = 0;
 
@@ -73,10 +80,22 @@ void usertrap(void) {
     syscall();
   } else if ((which_dev = devintr()) != 0) {
     // ok
+    // ! page fault,if this is a valid address,allocate a page frame
+  } else if (r_scause() == 13 || r_scause() == 15) {
+    u64 fault_addr = r_stval();
+    if (fault_addr > myproc()->sz) {
+      trap_panic();
+    }
+    int res;
+    if ((res = do_lazy_allocation(fault_addr)) == -1) {
+      printf("run out of memory\n");
+      p->killed = 1;
+    } else if (res == -2) {
+      printf("map failed");
+      p->killed = 1;
+    }
   } else {
-    printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
-    printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
-    p->killed = 1;
+    trap_panic();
   }
 
   if (p->killed)
