@@ -1,5 +1,9 @@
+#pragma once
 #include "riscv.h"
 #include "types.h"
+
+#define u32 uint32
+#define u64 uint64
 
 struct buf;
 struct context;
@@ -83,22 +87,17 @@ int pipewrite(struct pipe *, uint64, int);
 void printf(char *, ...);
 void panic(char *) __attribute__((noreturn));
 void printfinit(void);
-void backtrace();
 
 // proc.c
 int cpuid(void);
 void exit(int);
 int fork(void);
 int growproc(int);
-u64 alarm(i32 tick, void *handler);
-i32 trace(i32 traced);
-void proc_mapstacks(pagetable_t);
 pagetable_t proc_pagetable(struct proc *);
 void proc_freepagetable(pagetable_t, uint64);
 int kill(int);
 struct cpu *mycpu(void);
 struct cpu *getmycpu(void);
-void info_reg();
 struct proc *myproc();
 void procinit(void);
 void scheduler(void) __attribute__((noreturn));
@@ -162,12 +161,10 @@ void uartputc_sync(int);
 int uartgetc(void);
 
 // vm.c
-
-pagetable_t kvmmake(void);
 void kvminit(void);
-int do_lazy_allocation(u64 addr);
 void kvminithart(void);
-void kvmmap(pagetable_t, uint64, uint64, uint64, int);
+uint64 kvmpa(uint64);
+void kvmmap(uint64, uint64, uint64, int);
 int mappages(pagetable_t, uint64, uint64, uint64, int);
 pagetable_t uvmcreate(void);
 void uvminit(pagetable_t, uchar *, uint);
@@ -178,21 +175,18 @@ void uvmfree(pagetable_t, uint64);
 void uvmunmap(pagetable_t, uint64, uint64, int);
 void uvmclear(pagetable_t, uint64);
 uint64 walkaddr(pagetable_t, uint64);
-int copyout(pagetable_t, uint64, char *, uint64);
-int copyin(pagetable_t p, char *, uint64, uint64);
-int copyinstr(pagetable_t, char *, uint64, uint64);
-void free_kmapping(struct proc *);
-void freewalk(pagetable_t);
-void proc_freekpagetable(struct proc *);
-void vmprint(pagetable_t);
 pte_t *walk(pagetable_t pagetable, uint64 va, int alloc);
-int uvmapping(pagetable_t pagetable, pagetable_t dst, u64 ori, u64 end);
+int copyout(pagetable_t, uint64, char *, uint64);
+int copyin(pagetable_t, char *, uint64, uint64);
+int copyinstr(pagetable_t, char *, uint64, uint64);
+int do_cow(pagetable_t pt, uint64 addr);
+int do_lazy_allocation(pagetable_t pt, uint64 addr);
+
 // plic.c
 void plicinit(void);
 void plicinithart(void);
 int plic_claim(void);
 void plic_complete(int);
-int copyinstr_new(char *dst, uint64 srcva, uint64 max);
 
 // virtio_disk.c
 void virtio_disk_init(void);
@@ -201,3 +195,5 @@ void virtio_disk_intr(void);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x) / sizeof((x)[0]))
+
+void backtrace();

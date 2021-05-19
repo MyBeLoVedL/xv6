@@ -7,8 +7,6 @@
 #include "spinlock.h"
 #include "types.h"
 
-extern char trampoline[]; // trampoline.S
-extern struct proc proc[NPROC];
 static int loadseg(pde_t *pgdir, uint64 addr, struct inode *ip, uint offset,
                    uint sz);
 
@@ -47,18 +45,12 @@ int exec(char *path, char **argv) {
       continue;
     if (ph.memsz < ph.filesz)
       goto bad;
-
-    // * security concerns,in case of integer overflow
     if (ph.vaddr + ph.memsz < ph.vaddr)
       goto bad;
     uint64 sz1;
-
     if ((sz1 = uvmalloc(pagetable, sz, ph.vaddr + ph.memsz)) == 0)
       goto bad;
-    uvmapping(pagetable, p->k_pagetable, sz, ph.vaddr + ph.memsz);
     sz = sz1;
-
-    // * va addr specified in ELF must be page-aligned
     if (ph.vaddr % PGSIZE != 0)
       goto bad;
     if (loadseg(pagetable, ph.vaddr, ip, ph.off, ph.filesz) < 0)
@@ -68,17 +60,17 @@ int exec(char *path, char **argv) {
   end_op();
   ip = 0;
 
+  p = myproc();
   uint64 oldsz = p->sz;
 
   // Allocate two pages at the next page boundary.
   // Use the second as the user stack.
   sz = PGROUNDUP(sz);
   uint64 sz1;
-  if ((sz1 = uvmalloc(pagetable, sz, sz + (1 << 6) * PGSIZE)) == 0)
+  if ((sz1 = uvmalloc(pagetable, sz, sz + 2 * PGSIZE)) == 0)
     goto bad;
-  uvmapping(pagetable, p->k_pagetable, sz, sz + (1 << 6) * PGSIZE);
   sz = sz1;
-  uvmclear(pagetable, sz - (1 << 6) * PGSIZE);
+  uvmclear(pagetable, sz - 2 * PGSIZE);
   sp = sz;
   stackbase = sp - PGSIZE;
 
@@ -118,11 +110,7 @@ int exec(char *path, char **argv) {
   // Commit to the user image.
   oldpagetable = p->pagetable;
   p->pagetable = pagetable;
-
   p->sz = sz;
-
-  // * when first time be scheduled,starting execution from epc,
-  // * which is exactly the entry point of this process.
   p->trapframe->epc = elf.entry; // initial program counter = main
   p->trapframe->sp = sp;         // initial stack pointer
   proc_freepagetable(oldpagetable, oldsz);

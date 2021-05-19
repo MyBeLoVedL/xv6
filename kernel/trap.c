@@ -11,9 +11,6 @@ uint ticks;
 
 extern char trampoline[], uservec[], userret[];
 
-struct trapframe handler_frame;
-u8 re_en = 0;
-
 // in kernelvec.S, calls kerneltrap().
 void kernelvec();
 
@@ -28,26 +25,6 @@ void trapinithart(void) { w_stvec((uint64)kernelvec); }
 // handle an interrupt, exception, or system call from user space.
 // called from trampoline.S
 //
-
-void info_reg() {
-  uint64 x;
-  asm volatile("mv %0, ra" : "=r"(x));
-  printf("ra:%p\n", x);
-  asm volatile("mv %0, sp" : "=r"(x));
-  printf("sp:%p\n", x);
-  asm volatile("mv %0, gp" : "=r"(x));
-  printf("gp:%p\n", x);
-  asm volatile("mv %0, tp" : "=r"(x));
-  printf("tp:%p\n", x);
-}
-
-static inline void trap_panic() {
-  printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(),
-         myproc()->pid);
-  printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
-  myproc()->killed = 1;
-}
-
 void usertrap(void) {
   int which_dev = 0;
 
@@ -80,53 +57,45 @@ void usertrap(void) {
     syscall();
   } else if ((which_dev = devintr()) != 0) {
     // ok
-    // ! page fault,if this is a valid address,allocate a page frame
   } else if (r_scause() == 13 || r_scause() == 15) {
-    u64 fault_addr = r_stval();
-    if (fault_addr > myproc()->sz) {
-      trap_panic();
-    }
-    int res;
-    if ((res = do_lazy_allocation(fault_addr)) == -1) {
-      printf("run out of memory\n");
-      p->killed = 1;
-    } else if (res == -2) {
-      printf("map failed");
+    uint64 addr = r_stval();
+    if (addr > MAXVA) {
+      printf("memory overflow");
       p->killed = 1;
     }
+    pte_t *pte = walk(p->pagetable, addr, 0);
+    if ((!pte || !(*pte & PTE_V)) && addr < p->sz) {
+      int res = do_lazy_allocation(p->pagetable, addr);
+      if (res != 0) {
+        p->killed = 1;
+        // printf("cause :%d lazy failed state: %d pid :%d ppid:%d\n", res,
+        //        p->state, p->pid, p->parent->pid);
+      }
+
+    } else if (pte && (*pte & PTE_COW)) {
+      int res = do_cow(p->pagetable, addr);
+      if (res != 0) {
+        printf("cow failed");
+        p->killed = 1;
+      }
+    } else {
+      printf("permission denied");
+      p->killed = 1;
+    }
+
   } else {
-    trap_panic();
+    printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
+    printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
+    p->killed = 1;
   }
 
   if (p->killed)
     exit(-1);
 
-  // * timer interrupt is paramount for OS.
-  // * the crutical juncture is ,every register must resume to
-  // * previous state without being mutated,even though temporary registers
   // give up the CPU if this is a timer interrupt.
-  if (which_dev == 2) {
-    if (p->if_alarm) {
-      p->tick_left -= 1;
-      if (p->tick_left == 0 && !re_en) {
-        memmove(&handler_frame, p->trapframe, sizeof(handler_frame));
-        p->tick_left = p->tick;
-        void *fn = p->handler;
-        u64 epc = p->trapframe->epc;
-        // p->context.ra = epc;
-        p->trapframe->epc = (u64)fn;
-        p->trapframe->ra = epc;
-        re_en = 1;
-        // printf("before: ");
-        // info_reg();
-        usertrapret();
-      }
-    }
-
+  if (which_dev == 2)
     yield();
-  }
 
-  // * return to user mode,restore saved registers from trapframe
   usertrapret();
 }
 
@@ -169,10 +138,6 @@ void usertrapret(void) {
   // jump to trampoline.S at the top of memory, which
   // switches to the user page table, restores user registers,
   // and switches to user mode with sret.
-
-  // * function calls ,or more generally,program executions is just about
-  // * change pc from one place to another,accompany with putting arguments
-  // * in stack or registers
   uint64 fn = TRAMPOLINE + (userret - trampoline);
   ((void (*)(uint64, uint64))fn)(TRAPFRAME, satp);
 }
@@ -189,6 +154,22 @@ void kerneltrap() {
     panic("kerneltrap: not from supervisor mode");
   if (intr_get() != 0)
     panic("kerneltrap: interrupts enabled");
+
+  // if (r_scause() == 13 || r_scause() == 15) {
+  //   struct proc *p = myproc();
+  //   uint64 addr = r_stval();
+  //   if (addr > MAXVA) {
+  //     printf("seg fault\n");
+  //     printf("unknown address %p\n", addr);
+  //     p->killed = 1;
+  //   }
+  //   pte_t *pte = walk(p->pagetable, addr, 0);
+  //   if (pte && (*pte & PTE_COW)) {
+  //     printf("this is a cow fault in kernel");
+  //   } else {
+  //     printf("unknown address %p\n", addr);
+  //   }
+  // }
 
   if ((which_dev = devintr()) == 0) {
     printf("scause %p\n", scause);

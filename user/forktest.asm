@@ -47,7 +47,7 @@ forktest(void)
 
   print("fork test\n");
   3a:	00000517          	auipc	a0,0x0
-  3e:	40e50513          	addi	a0,a0,1038 # 448 <alarmret+0xc>
+  3e:	3f650513          	addi	a0,a0,1014 # 430 <uptime+0xc>
   42:	00000097          	auipc	ra,0x0
   46:	fbe080e7          	jalr	-66(ra) # 0 <print>
 
@@ -71,7 +71,7 @@ forktest(void)
   if(n == N){
     print("fork claimed to work N times!\n");
   64:	00000517          	auipc	a0,0x0
-  68:	3f450513          	addi	a0,a0,1012 # 458 <alarmret+0x1c>
+  68:	3dc50513          	addi	a0,a0,988 # 440 <uptime+0x1c>
   6c:	00000097          	auipc	ra,0x0
   70:	f94080e7          	jalr	-108(ra) # 0 <print>
     exit(1);
@@ -113,7 +113,7 @@ forktest(void)
 
   print("fork test OK\n");
   b4:	00000517          	auipc	a0,0x0
-  b8:	3f450513          	addi	a0,a0,1012 # 4a8 <alarmret+0x6c>
+  b8:	3dc50513          	addi	a0,a0,988 # 490 <uptime+0x6c>
   bc:	00000097          	auipc	ra,0x0
   c0:	f44080e7          	jalr	-188(ra) # 0 <print>
 }
@@ -125,7 +125,7 @@ forktest(void)
   ce:	8082                	ret
       print("wait stopped early\n");
   d0:	00000517          	auipc	a0,0x0
-  d4:	3a850513          	addi	a0,a0,936 # 478 <alarmret+0x3c>
+  d4:	39050513          	addi	a0,a0,912 # 460 <uptime+0x3c>
   d8:	00000097          	auipc	ra,0x0
   dc:	f28080e7          	jalr	-216(ra) # 0 <print>
       exit(1);
@@ -134,7 +134,7 @@ forktest(void)
   e6:	2aa080e7          	jalr	682(ra) # 38c <exit>
     print("wait got too many\n");
   ea:	00000517          	auipc	a0,0x0
-  ee:	3a650513          	addi	a0,a0,934 # 490 <alarmret+0x54>
+  ee:	38e50513          	addi	a0,a0,910 # 478 <uptime+0x54>
   f2:	00000097          	auipc	ra,0x0
   f6:	f0e080e7          	jalr	-242(ra) # 0 <print>
     exit(1);
@@ -464,8 +464,6 @@ atoi(const char *s)
 
 00000000000002da <memmove>:
 
-// #define memcpy memmove
-
 void*
 memmove(void *vdst, const void *vsrc, int n)
 {
@@ -793,33 +791,3 @@ uptime:
  426:	00000073          	ecall
  ret
  42a:	8082                	ret
-
-000000000000042c <trace>:
-.global trace
-trace:
- li a7, SYS_trace
- 42c:	48d9                	li	a7,22
- ecall
- 42e:	00000073          	ecall
- ret
- 432:	8082                	ret
-
-0000000000000434 <alarm>:
-.global alarm
-alarm:
- li a7, SYS_alarm
- 434:	48dd                	li	a7,23
- ecall
- 436:	00000073          	ecall
- ret
- 43a:	8082                	ret
-
-000000000000043c <alarmret>:
-.global alarmret
-alarmret:
- li a7, SYS_alarmret
- 43c:	48e1                	li	a7,24
- ecall
- 43e:	00000073          	ecall
- ret
- 442:	8082                	ret

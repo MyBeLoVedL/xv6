@@ -95,8 +95,6 @@ atoi(const char *s)
   return n;
 }
 
-// #define memcpy memmove
-
 void*
 memmove(void *vdst, const void *vsrc, int n)
 {

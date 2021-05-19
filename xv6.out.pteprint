@@ -1,0 +1,21 @@
+*** Now run 'gdb' in another window.
+
+xv6 kernel is booting
+
+hart 2 starting
+hart 1 starting
+page table 0x0000000087f62000
+ ..0: pte 0x0000000021fd7c01 pa 0x0000000087f5f000
+ .. ..0: pte 0x0000000021fd7001 pa 0x0000000087f5c000
+ .. .. ..0: pte 0x0000000021fd741f pa 0x0000000087f5d000
+ .. .. ..1: pte 0x0000000021fd6c0f pa 0x0000000087f5b000
+ .. .. ..2: pte 0x0000000021fd681f pa 0x0000000087f5a000
+ .. ..95: pte 0x0000000021fd7801 pa 0x0000000087f5e000
+ .. .. ..511: pte 0x0000000021fed807 pa 0x0000000087fb6000
+ ..255: pte 0x0000000021fd8401 pa 0x0000000087f61000
+ .. ..511: pte 0x0000000021fd8001 pa 0x0000000087f60000
+ .. .. ..511: pte 0x0000000020001c0b pa 0x0000000080007000
+init: starting sh
+$ echo hi
+hi
+$ qemu-system-riscv64: terminating on signal 15 from pid 15015 (make)

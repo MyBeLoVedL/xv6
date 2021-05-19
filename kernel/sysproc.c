@@ -35,38 +35,15 @@ uint64 sys_sbrk(void) {
   struct proc *p = myproc();
   addr = p->sz;
   p->sz += n;
+  if (p->sz >= MAXVA) {
+    p->killed = 1;
+    printf("user momry overflow");
+    exit(-1);
+  }
   if (n < 0) {
     uvmdealloc(p->pagetable, addr, p->sz);
   }
   return addr;
-}
-
-u64 sys_trace(void) {
-  i32 traced;
-  if (argint(0, &traced) < 0)
-    return -1;
-  return trace(traced);
-}
-
-u64 sys_alarm(void) {
-  i32 tick;
-  u64 handler;
-  if (argaddr(1, &handler) < 0)
-    return -1;
-  if (argint(0, &tick) < 0)
-    return -1;
-  return alarm(tick, (void *)handler);
-}
-
-extern struct trapframe handler_frame;
-extern u8 re_en;
-u64 sys_alarmret(void) {
-  struct proc *p = myproc();
-  // * restore argument registers
-  memmove(p->trapframe, &handler_frame, sizeof(handler_frame));
-  re_en = 0;
-  usertrapret();
-  return 0;
 }
 
 uint64 sys_sleep(void) {

@@ -110,10 +110,10 @@ void printf(char *fmt, ...) {
 
 void panic(char *s) {
   pr.locking = 0;
-  backtrace();
+  printf("panic: ");
   printf(s);
   printf("\n");
-  printf("panic: ");
+  backtrace();
   panicked = 1; // freeze uart output from other CPUs
   for (;;)
     ;
@@ -125,18 +125,18 @@ void printfinit(void) {
 }
 
 void backtrace() {
-  u64 sp = r_fp();
+  uint64 sp = r_fp();
   char *s = (char *)sp;
-  u64 stack_base = PGROUNDUP(sp);
-  u64 stack_up = PGROUNDDOWN(sp);
+  uint64 stack_base = PGROUNDUP(sp);
+  uint64 stack_up = PGROUNDDOWN(sp);
   if (!(sp >= stack_up && sp <= stack_base)) {
     panic("invalid stack frame pointer");
   }
-  u64 ra;
-  while ((u64)s <= stack_base && (u64)s >= stack_up) {
-    ra = *(u64 *)(s - 8);
-    s = (char *)*(u64 *)(s - 16);
-    if (((u64)s <= stack_base && (u64)s >= stack_up))
+  uint64 ra;
+  while ((uint64)s <= stack_base && (uint64)s >= stack_up) {
+    ra = *(uint64 *)(s - 8);
+    s = (char *)*(uint64 *)(s - 16);
+    if (((uint64)s <= stack_base && (uint64)s >= stack_up))
       printf("%p\n", ra);
   }
 }

@@ -1,4 +1,32 @@
-#include "types.h"
+#pragma once
+#define u32 unsigned int
+#define u64 unsigned long
+
+typedef unsigned int uint;
+typedef unsigned short ushort;
+typedef unsigned char uchar;
+
+typedef unsigned char uint8;
+typedef unsigned short uint16;
+typedef unsigned int uint32;
+typedef unsigned long uint64;
+
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define ABS(a) ((a) >= 0 ? (a) : (-(a)))
+#define auto __auto_type
+
+#define SWAP(pa, pb)                                                           \
+  ({                                                                           \
+    __typeof__(*(pa)) tmp = (*(pb));                                           \
+    (*(pb)) = (*(pa));                                                         \
+    (*(pa)) = tmp;                                                             \
+  })
+
+#define for_(num) for (int i = 0; i < (num); i++)
+#define PGSIZE 4096
+
+typedef uint64 pde_t;
 
 struct stat;
 struct rtcdate;
@@ -25,9 +53,7 @@ int getpid(void);
 char *sbrk(int);
 int sleep(int);
 int uptime(void);
-int trace(int traced);
-u64 alarm(i32 tick, void *handler);
-void alarmret(void);
+
 // ulib.c
 int stat(const char *, struct stat *);
 char *strcpy(char *, const char *);
@@ -44,3 +70,7 @@ void free(void *);
 int atoi(const char *);
 int memcmp(const void *, const void *, uint);
 void *memcpy(void *, const void *, uint);
+
+// mem.c
+void *l_alloc(u32 size);
+void l_free(void *p);
