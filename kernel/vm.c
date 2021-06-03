@@ -1,5 +1,7 @@
 #include "defs.h"
 #include "elf.h"
+#include "fcntl.h"
+#include "file.h"
 #include "fs.h"
 #include "memlayout.h"
 #include "param.h"
@@ -7,7 +9,6 @@
 #include "riscv.h"
 #include "types.h"
 
-#define u64 uint64
 /*
  * the kernel's page table.
  */
@@ -466,6 +467,138 @@ int do_lazy_allocation(pagetable_t pt, u64 addr) {
     kfree((void *)pa);
     // uvmdealloc(pt, va + PGSIZE, va);
     return -2;
+  }
+  return 0;
+}
+void *find_avail_addr_range(vma_t *vma) {
+  void *avail = (void *)VMA_ORIGIN;
+  for (int i = 0; i < MAX_VMA; i++) {
+    if ((vma + i)->used) {
+      if ((vma + i)->start + (vma + i)->length > avail)
+        avail =
+            (void *)PGROUNDUP((uint64)((vma + i)->start + (vma + i)->length));
+    }
+  }
+  return avail;
+}
+
+int do_vma(void *addr, vma_t *vma) {
+  if (addr < vma->start || addr >= vma->start + vma->length)
+    panic("invalid mmap!!!");
+  void *pa;
+  if ((pa = kalloc()) == 0)
+    return -1;
+  memset(pa, 0, PGSIZE);
+  uint file_off = ((addr - vma->start + vma->offset) >> 12) << 12;
+  ilock(vma->mmaped_file->ip);
+  int rc = 0;
+  if ((rc = readi(vma->mmaped_file->ip, 0, (uint64)pa, file_off, PGSIZE)) < 0) {
+    printf("read failed , actual read %d\n", rc);
+    return -2;
+  }
+  iunlock(vma->mmaped_file->ip);
+  int perm = PTE_U;
+  if ((vma->mmaped_file->readable) && (vma->proct & PROT_READ))
+    perm |= PTE_R;
+  if (((vma->mmaped_file->writable) ||
+       (vma->mmaped_file->readable && (vma->proct & MAP_PRIVATE))) &&
+      (vma->proct & PROT_WRITE))
+    perm |= PTE_W;
+  if (vma->proct & PROT_EXEC)
+    perm |= PTE_X;
+  if (mappages(myproc()->pagetable, PGROUNDDOWN((uint64)addr), PGSIZE,
+               (uint64)pa, perm) < 0)
+    return -3;
+  // printf("hello in do vma\n");
+  return 0;
+}
+
+void *mmap(void *addr, int length, int proct, int flag, int fd, int offset) {
+  struct proc *p = myproc();
+  int i;
+  if (!p->ofile[fd])
+    goto err;
+  // printf("map proct  %d flag  %d\n", proct, flag);
+  if (((proct & PROT_WRITE) && !p->ofile[fd]->writable) && (flag & MAP_SHARED))
+    goto err;
+  for (i = 0; i < MAX_VMA; i++) {
+    if (!p->vma[i].used) {
+      p->vma[i].mmaped_file = filedup(p->ofile[fd]);
+      p->vma[i].used = 1;
+      p->vma[i].length = length;
+      p->vma[i].proct = proct;
+      p->vma[i].offset = offset;
+      p->vma[i].flag = flag;
+      void *addr = find_avail_addr_range(&p->vma[0]);
+      p->vma[i].start = addr;
+      p->vma[i].origin = addr;
+      break;
+    }
+  }
+
+  if (i == MAX_VMA)
+    return (void *)-1;
+
+  return p->vma[i].start;
+
+err:
+  return (void *)-1;
+}
+
+int munmap(void *addr, int length) {
+  // printf("~~~hello in unmap\n");
+  vma_t *vma;
+  struct proc *p = myproc();
+  uint8 valid = 0;
+  for (int i = 0; i < MAX_VMA; i++) {
+    if (p->vma[i].start == addr && p->vma[i].length >= length) {
+      vma = &p->vma[i];
+      valid = 1;
+      break;
+    }
+  }
+  if (!valid) {
+    printf("not in vma\n");
+    return -1;
+  }
+  int left = length, should_write = 0;
+  void *cur = addr;
+  vma->mmaped_file->off = cur - vma->origin + vma->offset;
+  // printf("flag %p proctect %p\n", vma->flag, vma->proct);
+  for (cur = addr; cur < addr + length; cur += should_write) {
+    pte_t *pte = walk(p->pagetable, (uint64)cur, 0);
+    if (!pte)
+      continue;
+    // if (!(*pte & PTE_V))
+    //   panic("unrecognized");
+    should_write = MIN(PGROUNDDOWN((uint64)cur) + PGSIZE - (uint64)cur, left);
+    left -= should_write;
+    int wc = -9;
+    if ((vma->flag & MAP_SHARED) && (*pte & PTE_D)) {
+      wc = filewrite(vma->mmaped_file, (uint64)cur, should_write);
+      if (wc < 0) {
+        printf("res %d offset %d cur %p should %d vma write %d\n", wc,
+               vma->mmaped_file->off, cur, should_write, wc);
+        return -1;
+      }
+    } // else {
+    //   printf("length %d should write %d  write %d\n", length, should_write,
+    //   wc);
+    // }
+    if ((*pte & PTE_V) &&
+        (((uint64)cur + should_write == PGROUNDDOWN((uint64)cur) + PGSIZE) ||
+         (should_write == vma->length))) {
+      // printf("unmap once\n");
+      uvmunmap(p->pagetable, PGROUNDDOWN((uint64)cur), 1, 1);
+    }
+  }
+  if (length == vma->length) {
+    fileclose(vma->mmaped_file);
+    memset(vma, 0, sizeof(*vma));
+    vma->used = 0;
+  } else {
+    vma->start += length;
+    vma->length -= length;
   }
   return 0;
 }
