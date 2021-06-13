@@ -1,5 +1,6 @@
 #include "proc.h"
 #include "defs.h"
+#include "fcntl.h"
 #include "memlayout.h"
 #include "param.h"
 #include "riscv.h"
@@ -112,8 +113,16 @@ found:
     return 0;
   }
 
-  // Set up new context to start executing at forkret,
-  // which returns to user space.
+  void *start = mmap((void *)VMA_HEAP_START,
+                     (int)((uint64)VMA_ORIGIN - (uint64)VMA_HEAP_START),
+                     PROT_READ | PROT_WRITE, MAP_PRIVATE, -1, 0);
+  if (start == 0)
+    panic("can't create heap vma maping");
+  p->mem_layout.heap_start = start;
+  p->mem_layout.heap_size = VMA_ORIGIN - VMA_HEAP;
+
+  // Set up new context to start executing at
+  // forkret, which returns to user space.
   memset(&p->context, 0, sizeof(p->context));
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;

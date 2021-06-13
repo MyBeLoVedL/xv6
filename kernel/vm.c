@@ -513,23 +513,30 @@ int do_vma(void *addr, vma_t *vma) {
   return 0;
 }
 
-void *mmap(void *addr, int length, int proct, int flag, int fd, int offset) {
+void *mmap(void *addr, u64 length, int proct, int flag, int fd, int offset) {
   struct proc *p = myproc();
   int i;
-  if (!p->ofile[fd])
+  u8 is_anno = 0;
+  if (fd < 0)
+    is_anno = 1;
+  else if (!p->ofile[fd])
     goto err;
   // printf("map proct  %d flag  %d\n", proct, flag);
-  if (((proct & PROT_WRITE) && !p->ofile[fd]->writable) && (flag & MAP_SHARED))
+
+  if (!is_anno && ((proct & PROT_WRITE) && !p->ofile[fd]->writable) &&
+      (flag & MAP_SHARED))
     goto err;
   for (i = 0; i < MAX_VMA; i++) {
     if (!p->vma[i].used) {
-      p->vma[i].mmaped_file = filedup(p->ofile[fd]);
+      p->vma[i].mmaped_file = !is_anno ? filedup(p->ofile[fd]) : 0;
       p->vma[i].used = 1;
       p->vma[i].length = length;
       p->vma[i].proct = proct;
       p->vma[i].offset = offset;
       p->vma[i].flag = flag;
-      void *addr = find_avail_addr_range(&p->vma[0]);
+      // * if not desinate an address
+      if (addr == 0)
+        addr = find_avail_addr_range(&p->vma[0]);
       p->vma[i].start = addr;
       p->vma[i].origin = addr;
       break;

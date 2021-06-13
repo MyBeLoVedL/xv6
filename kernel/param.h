@@ -12,4 +12,4 @@
 #define FSSIZE 1000               // size of file system in blocks
 #define MAXPATH 128               // maximum file path name
 #define MAX_VMA 16
-#define VMA_ORIGIN 0x100000000
+#define VMA_ORIGIN (0x500000000)

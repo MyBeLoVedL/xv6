@@ -180,6 +180,8 @@ int copyin(pagetable_t, char *, uint64, uint64);
 int copyinstr(pagetable_t, char *, uint64, uint64);
 int do_cow(pagetable_t pt, uint64 addr);
 int do_lazy_allocation(pagetable_t pt, uint64 addr);
+void *mmap(void *addr, u64 length, int proct, int flag, int fd, int offset);
+int munmap(void *addr, int length);
 
 // plic.c
 void plicinit(void);

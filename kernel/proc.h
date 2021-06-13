@@ -85,11 +85,16 @@ struct trapframe {
   /* 280 */ uint64 t6;
 };
 
+typedef struct {
+  void *heap_start;
+  u64 heap_size;
+} mem_layout_t;
+
 enum procstate { UNUSED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 typedef struct {
   void *start;
   void *origin;
-  int length;
+  u64 length;
   int proct;
   int flag;
   int offset;
@@ -117,5 +122,6 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   char name[16];
   struct inode *cwd; // Current directory
+  mem_layout_t mem_layout;
   vma_t vma[MAX_VMA];
 };
