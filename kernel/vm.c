@@ -489,23 +489,32 @@ int do_vma(void *addr, vma_t *vma) {
   if ((pa = kalloc()) == 0)
     return -1;
   memset(pa, 0, PGSIZE);
-  uint file_off = ((addr - vma->start + vma->offset) >> 12) << 12;
-  ilock(vma->mmaped_file->ip);
-  int rc = 0;
-  if ((rc = readi(vma->mmaped_file->ip, 0, (uint64)pa, file_off, PGSIZE)) < 0) {
-    printf("read failed , actual read %d\n", rc);
-    return -2;
+  if (!(vma->flag & MAP_ANNO)) {
+    uint file_off = ((addr - vma->start + vma->offset) >> 12) << 12;
+    ilock(vma->mmaped_file->ip);
+    int rc = 0;
+    if ((rc = readi(vma->mmaped_file->ip, 0, (uint64)pa, file_off, PGSIZE)) <
+        0) {
+      printf("read failed , actual read %d\n", rc);
+      return -2;
+    }
+    iunlock(vma->mmaped_file->ip);
   }
-  iunlock(vma->mmaped_file->ip);
+
+  // * set proper PTE permission
   int perm = PTE_U;
-  if ((vma->mmaped_file->readable) && (vma->proct & PROT_READ))
-    perm |= PTE_R;
-  if (((vma->mmaped_file->writable) ||
-       (vma->mmaped_file->readable && (vma->proct & MAP_PRIVATE))) &&
-      (vma->proct & PROT_WRITE))
-    perm |= PTE_W;
-  if (vma->proct & PROT_EXEC)
-    perm |= PTE_X;
+  if (vma->flag & MAP_ANNO) {
+    perm |= PTE_R | PTE_W;
+  } else {
+    if ((vma->mmaped_file->readable) && (vma->proct & PROT_READ))
+      perm |= PTE_R;
+    if (((vma->mmaped_file->writable) ||
+         (vma->mmaped_file->readable && (vma->proct & MAP_PRIVATE))) &&
+        (vma->proct & PROT_WRITE))
+      perm |= PTE_W;
+    if (vma->proct & PROT_EXEC)
+      perm |= PTE_X;
+  }
   if (mappages(myproc()->pagetable, PGROUNDDOWN((uint64)addr), PGSIZE,
                (uint64)pa, perm) < 0)
     return -3;
@@ -516,19 +525,18 @@ int do_vma(void *addr, vma_t *vma) {
 void *mmap(void *addr, u64 length, int proct, int flag, int fd, int offset) {
   struct proc *p = myproc();
   int i;
-  u8 is_anno = 0;
-  if (fd < 0)
-    is_anno = 1;
-  else if (!p->ofile[fd])
-    goto err;
-  // printf("map proct  %d flag  %d\n", proct, flag);
 
-  if (!is_anno && ((proct & PROT_WRITE) && !p->ofile[fd]->writable) &&
+  // ! error checking for fd
+  if ((fd < 0 && !(flag & MAP_ANNO)) || fd > NOFILE ||
+      (fd > 0 && !p->ofile[fd]))
+    goto err;
+  if ((proct & PROT_WRITE) && (fd > 0 && !p->ofile[fd]->writable) &&
       (flag & MAP_SHARED))
     goto err;
+
   for (i = 0; i < MAX_VMA; i++) {
-    if (!p->vma[i].used) {
-      p->vma[i].mmaped_file = !is_anno ? filedup(p->ofile[fd]) : 0;
+    if (!p->vma[0].used) {
+      p->vma[i].mmaped_file = !(flag & MAP_ANNO) ? filedup(p->ofile[fd]) : 0;
       p->vma[i].used = 1;
       p->vma[i].length = length;
       p->vma[i].proct = proct;
@@ -570,14 +578,12 @@ int munmap(void *addr, int length) {
   }
   int left = length, should_write = 0;
   void *cur = addr;
-  vma->mmaped_file->off = cur - vma->origin + vma->offset;
-  // printf("flag %p proctect %p\n", vma->flag, vma->proct);
+  if (!(vma->flag & MAP_ANNO))
+    vma->mmaped_file->off = cur - vma->origin + vma->offset;
   for (cur = addr; cur < addr + length; cur += should_write) {
     pte_t *pte = walk(p->pagetable, (uint64)cur, 0);
     if (!pte)
       continue;
-    // if (!(*pte & PTE_V))
-    //   panic("unrecognized");
     should_write = MIN(PGROUNDDOWN((uint64)cur) + PGSIZE - (uint64)cur, left);
     left -= should_write;
     int wc = -9;
@@ -600,7 +606,8 @@ int munmap(void *addr, int length) {
     }
   }
   if (length == vma->length) {
-    fileclose(vma->mmaped_file);
+    if (!(vma->flag & MAP_ANNO))
+      fileclose(vma->mmaped_file);
     memset(vma, 0, sizeof(*vma));
     vma->used = 0;
   } else {

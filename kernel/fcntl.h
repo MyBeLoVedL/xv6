@@ -11,6 +11,7 @@
 
 #define MAP_SHARED 0x01
 #define MAP_PRIVATE 0x02
+#define MAP_ANNO 0x04
 
 #define VMA_HEAP 0
 #define VMA_HEAP_START (0x100000000)

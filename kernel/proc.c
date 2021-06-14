@@ -113,12 +113,17 @@ found:
     return 0;
   }
 
-  void *start = mmap((void *)VMA_HEAP_START,
-                     (int)((uint64)VMA_ORIGIN - (uint64)VMA_HEAP_START),
-                     PROT_READ | PROT_WRITE, MAP_PRIVATE, -1, 0);
-  if (start == 0)
-    panic("can't create heap vma maping");
-  p->mem_layout.heap_start = start;
+  {
+    p->vma[0].used = 1;
+    p->vma[0].length = VMA_ORIGIN - VMA_HEAP_START;
+    p->vma[0].proct = PROT_READ | PROT_WRITE;
+    p->vma[0].offset = 0;
+    p->vma[0].flag = MAP_PRIVATE | MAP_ANNO;
+    p->vma[0].start = (void *)VMA_HEAP_START;
+    p->vma[0].origin = (void *)VMA_HEAP_START;
+  }
+
+  p->mem_layout.heap_start = (void *)VMA_HEAP_START;
   p->mem_layout.heap_size = VMA_ORIGIN - VMA_HEAP;
 
   // Set up new context to start executing at
@@ -326,6 +331,13 @@ void exit(int status) {
       struct file *f = p->ofile[fd];
       fileclose(f);
       p->ofile[fd] = 0;
+    }
+  }
+  for (int i = 0; i < MAX_VMA; i++) {
+    if (p->vma[i].used) {
+      if (munmap(p->vma[i].start, p->vma[i].length) < 0) {
+        panic("free on exit");
+      }
     }
   }
 

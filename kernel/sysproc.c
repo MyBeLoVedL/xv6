@@ -37,7 +37,8 @@ uint64 sys_sbrk(void) {
   addr = (u64)p->mem_layout.heap_start;
   if (addr + n >= p->mem_layout.heap_size) {
     p->killed = 1;
-    printf("user heap momry overflow");
+    printf("user heap momry overflow\n");
+    printf("origin : %p after %p", addr, addr + n);
     exit(-1);
   }
   p->mem_layout.heap_start += n;
