@@ -1,6 +1,5 @@
 #include "date.h"
 #include "defs.h"
-#include "fcntl.h"
 #include "memlayout.h"
 #include "param.h"
 #include "proc.h"
@@ -28,22 +27,21 @@ uint64 sys_wait(void) {
 }
 
 uint64 sys_sbrk(void) {
-  u64 addr;
+  int addr;
   int n;
 
   if (argint(0, &n) < 0)
     return -1;
   struct proc *p = myproc();
-  addr = (u64)p->mem_layout.heap_start;
-  if (addr + n >= p->mem_layout.heap_size) {
+  addr = p->sz;
+  p->sz += n;
+  if (p->sz >= MAXVA) {
     p->killed = 1;
-    printf("user heap momry overflow\n");
-    printf("origin : %p after %p", addr, addr + n);
+    printf("user momry overflow");
     exit(-1);
   }
-  p->mem_layout.heap_start += n;
   if (n < 0) {
-    uvmdealloc(p->pagetable, addr, (u64)p->mem_layout.heap_start);
+    uvmdealloc(p->pagetable, addr, p->sz);
   }
   return addr;
 }

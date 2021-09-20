@@ -1,7 +1,9 @@
 #pragma once
-#include "proc.h"
 #include "riscv.h"
 #include "types.h"
+
+#define u32 uint32
+#define u64 uint64
 
 struct buf;
 struct context;
@@ -172,7 +174,6 @@ int uvmcopy(pagetable_t, pagetable_t, uint64);
 void uvmfree(pagetable_t, uint64);
 void uvmunmap(pagetable_t, uint64, uint64, int);
 void uvmclear(pagetable_t, uint64);
-int do_vma(void *addr, vma_t *vma);
 uint64 walkaddr(pagetable_t, uint64);
 pte_t *walk(pagetable_t pagetable, uint64 va, int alloc);
 int copyout(pagetable_t, uint64, char *, uint64);
@@ -180,8 +181,6 @@ int copyin(pagetable_t, char *, uint64, uint64);
 int copyinstr(pagetable_t, char *, uint64, uint64);
 int do_cow(pagetable_t pt, uint64 addr);
 int do_lazy_allocation(pagetable_t pt, uint64 addr);
-void *mmap(void *addr, u64 length, int proct, int flag, int fd, int offset);
-int munmap(void *addr, int length);
 
 // plic.c
 void plicinit(void);

@@ -15,6 +15,7 @@ pagetable_t kernel_pagetable;
 
 extern char etext[]; // kernel.ld sets this to end of kernel code.
 extern int page_ref_count[];
+extern struct spinlock ref_lock;
 
 extern char trampoline[]; // trampoline.S
 
@@ -310,7 +311,9 @@ int uvmcopy(pagetable_t old, pagetable_t new, uint64 sz) {
     *pte &= ~PTE_W;
     *pte |= PTE_COW;
     *new_pte = *pte;
+    acquire(&ref_lock);
     page_ref_count[REF_IDX(pa)] += 1;
+    release(&ref_lock);
   }
   return 0;
 
@@ -440,12 +443,15 @@ int do_cow(pagetable_t pt, uint64 addr) {
   flags = PTE_FLAGS(*pte);
   flags |= PTE_W;
   flags &= ~PTE_COW;
+  acquire(&ref_lock);
   if (page_ref_count[REF_IDX(pa)] == 1) {
     *pte |= PTE_W;
     *pte &= ~PTE_COW;
+    release(&ref_lock);
     return 0;
   }
   page_ref_count[REF_IDX(pa)] -= 1;
+  release(&ref_lock);
   if ((mem = kalloc()) == 0)
     return -1;
   memmove(mem, (char *)pa, PGSIZE);

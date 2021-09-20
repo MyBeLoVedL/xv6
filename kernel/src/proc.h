@@ -85,22 +85,8 @@ struct trapframe {
   /* 280 */ uint64 t6;
 };
 
-typedef struct {
-  void *heap_start;
-  u64 heap_size;
-} mem_layout_t;
-
 enum procstate { UNUSED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
-typedef struct {
-  void *start;
-  void *origin;
-  u64 length;
-  int proct;
-  int flag;
-  int offset;
-  struct file *mmaped_file;
-  uint8 used;
-} vma_t;
+
 // Per-process state
 struct proc {
   struct spinlock lock;
@@ -120,8 +106,6 @@ struct proc {
   struct trapframe *trapframe; // data page for trampoline.S
   struct context context;      // swtch() here to run process
   struct file *ofile[NOFILE];  // Open files
-  char name[16];
-  struct inode *cwd; // Current directory
-  mem_layout_t mem_layout;
-  vma_t vma[MAX_VMA];
+  struct inode *cwd;           // Current directory
+  char name[16];               // Process name (debugging)
 };
