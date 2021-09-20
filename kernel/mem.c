@@ -1,5 +1,6 @@
 #include "defs.h"
 #include "riscv.h"
+#include "types.h"
 
 typedef struct page {
   void *cur;

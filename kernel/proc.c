@@ -1,5 +1,6 @@
 #include "proc.h"
 #include "defs.h"
+#include "fcntl.h"
 #include "memlayout.h"
 #include "param.h"
 #include "riscv.h"
@@ -112,8 +113,21 @@ found:
     return 0;
   }
 
-  // Set up new context to start executing at forkret,
-  // which returns to user space.
+  {
+    p->vma[0].used = 1;
+    p->vma[0].length = VMA_ORIGIN - VMA_HEAP_START;
+    p->vma[0].proct = PROT_READ | PROT_WRITE;
+    p->vma[0].offset = 0;
+    p->vma[0].flag = MAP_PRIVATE | MAP_ANNO;
+    p->vma[0].start = (void *)VMA_HEAP_START;
+    p->vma[0].origin = (void *)VMA_HEAP_START;
+  }
+
+  p->mem_layout.heap_start = (void *)VMA_HEAP_START;
+  p->mem_layout.heap_size = VMA_ORIGIN - VMA_HEAP;
+
+  // Set up new context to start executing at
+  // forkret, which returns to user space.
   memset(&p->context, 0, sizeof(p->context));
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
@@ -317,6 +331,13 @@ void exit(int status) {
       struct file *f = p->ofile[fd];
       fileclose(f);
       p->ofile[fd] = 0;
+    }
+  }
+  for (int i = 0; i < MAX_VMA; i++) {
+    if (p->vma[i].used) {
+      if (munmap(p->vma[i].start, p->vma[i].length) < 0) {
+        panic("free on exit");
+      }
     }
   }
 

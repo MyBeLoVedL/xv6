@@ -11,3 +11,8 @@
 #define NBUF (MAXOPBLOCKS * 3)    // size of disk block cache
 #define FSSIZE 1000               // size of file system in blocks
 #define MAXPATH 128               // maximum file path name
+<<<<<<< HEAD
+=======
+#define MAX_VMA 16
+#define VMA_ORIGIN (0x500000000)
+>>>>>>> 6205848b8618453bf50bfe5331b435a9614bac2b

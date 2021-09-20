@@ -5,7 +5,6 @@
 #include "riscv.h"
 #include "spinlock.h"
 #include "types.h"
-
 struct spinlock tickslock;
 uint ticks;
 
@@ -59,36 +58,52 @@ void usertrap(void) {
     // ok
   } else if (r_scause() == 13 || r_scause() == 15) {
     uint64 addr = r_stval();
+    u8 valid = 0;
     if (addr > MAXVA) {
       printf("memory overflow");
       p->killed = 1;
     }
     pte_t *pte = walk(p->pagetable, addr, 0);
-    if ((!pte || !(*pte & PTE_V)) && addr < p->sz) {
-      int res = do_lazy_allocation(p->pagetable, addr);
-      if (res != 0) {
-        p->killed = 1;
-        // printf("cause :%d lazy failed state: %d pid :%d ppid:%d\n", res,
-        //        p->state, p->pid, p->parent->pid);
-      }
-
-    } else if (pte && (*pte & PTE_COW)) {
+    if (pte && (*pte & PTE_COW)) {
       int res = do_cow(p->pagetable, addr);
       if (res != 0) {
         printf("cow failed");
         p->killed = 1;
       }
-    } else {
-      printf("permission denied");
+      goto done;
+    }
+    i32 res = 9;
+    for (int i = 0; i < MAX_VMA; i++) {
+      if ((void *)addr >= p->vma[i].start &&
+          (void *)addr < p->vma[i].start + p->vma[i].length) {
+        pte_t *pte = walk(p->pagetable, addr, 0);
+        if (pte && (*pte & PTE_V)) {
+          printf("original permission %p\n", PTE_FLAGS(*pte));
+          printf("map exists");
+          goto err;
+        }
+        if ((res = do_vma((void *)addr, &p->vma[i])) == -1) {
+          printf("run out of memory\n");
+          p->killed = 1;
+        } else if (res == -2) {
+          printf("map failed");
+          p->killed = 1;
+        }
+        valid = 1;
+        break;
+      }
+    }
+  err: // printf("vma trap %d\n", res);
+    if (!valid) {
+      printf("memory access  permission denied");
       p->killed = 1;
     }
-
   } else {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
     p->killed = 1;
   }
-
+done:
   if (p->killed)
     exit(-1);
 

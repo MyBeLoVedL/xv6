@@ -1,2 +1,3 @@
-kernel/kalloc.o: kernel/kalloc.c kernel/defs.h kernel/riscv.h \
- kernel/types.h kernel/memlayout.h kernel/param.h kernel/spinlock.h
+kernel/kalloc.o: kernel/kalloc.c kernel/defs.h kernel/proc.h \
+ kernel/param.h kernel/riscv.h kernel/types.h kernel/spinlock.h \
+ kernel/memlayout.h
